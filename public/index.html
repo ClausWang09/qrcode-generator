@@ -107,7 +107,7 @@
       white-space: nowrap;
     }
 
-    .size-select, .color-input {
+    .size-select {
       background: rgba(255,255,255,0.08);
       border: 1px solid rgba(255,255,255,0.15);
       border-radius: 8px;
@@ -189,6 +189,7 @@
     }
 
     .dl-btn:active { transform: scale(0.97); }
+    .dl-btn:hover { opacity: 0.85; }
 
     .dl-png {
       background: linear-gradient(135deg, #a18cd1, #fbc2eb);
@@ -201,13 +202,18 @@
       color: #fff;
     }
 
-    .dl-btn:hover { opacity: 0.85; }
+    .btn-cloud {
+      background: linear-gradient(135deg, #43e97b, #38f9d7);
+      color: #1a1a2e;
+      font-weight: 700;
+    }
 
     .error-msg {
       color: #ff6b6b;
       font-size: 0.85rem;
       text-align: center;
       display: none;
+      margin-bottom: 8px;
     }
 
     .error-msg.show { display: block; }
@@ -219,11 +225,13 @@
       width: 100%;
       align-items: center;
     }
+
     .url-copy-row {
       display: flex;
       gap: 8px;
       width: 100%;
     }
+
     .url-copy-row input {
       flex: 1;
       padding: 10px 14px;
@@ -234,13 +242,10 @@
       font-size: 0.82rem;
       cursor: text;
     }
+
     .url-label {
       color: rgba(255,255,255,0.5);
       font-size: 0.82rem;
-    }
-    .btn-cloud {
-      background: linear-gradient(135deg, #43e97b, #38f9d7);
-      color: #1a1a2e;
     }
   </style>
 </head>
@@ -284,6 +289,7 @@
         <button class="dl-btn dl-png" onclick="downloadPNG()">⬇ 下載 PNG</button>
         <button class="dl-btn dl-svg" onclick="downloadSVG()">⬇ 下載 SVG</button>
       </div>
+      <!-- Cloud upload button — always visible once QR is generated -->
       <button class="dl-btn btn-cloud" id="uploadBtn" onclick="uploadToCloud()">☁ 取得雲端連結</button>
       <div class="url-box" id="urlBox">
         <div class="url-label">圖片雲端連結（可直接分享）：</div>
@@ -298,18 +304,19 @@
   <script>
     let currentUrl = '';
 
-    const urlInput = document.getElementById('urlInput');
-    urlInput.addEventListener('keydown', e => { if (e.key === 'Enter') generate(); });
+    document.getElementById('urlInput').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') generate();
+    });
 
     function isValidUrl(str) {
       try {
         const u = new URL(str.startsWith('http') ? str : 'https://' + str);
         return u.hostname.includes('.');
-      } catch { return false; }
+      } catch (e) { return false; }
     }
 
     function generate() {
-      const raw = urlInput.value.trim();
+      const raw = document.getElementById('urlInput').value.trim();
       const errorEl = document.getElementById('errorMsg');
 
       if (!raw) { showError('請輸入網址'); return; }
@@ -337,10 +344,12 @@
 
       document.getElementById('urlDisplay').textContent = url;
       document.getElementById('qrArea').classList.add('show');
+
+      // Reset cloud upload state
       const uploadBtn = document.getElementById('uploadBtn');
-      if (uploadBtn) { uploadBtn.textContent = '☁ 取得雲端連結'; uploadBtn.disabled = false; }
-      const urlBox = document.getElementById('urlBox');
-      if (urlBox) urlBox.style.display = 'none';
+      uploadBtn.textContent = '☁ 取得雲端連結';
+      uploadBtn.disabled = false;
+      document.getElementById('urlBox').style.display = 'none';
     }
 
     function showError(msg) {
@@ -370,36 +379,31 @@
       const canvas  = getCanvas();
       if (!canvas) return;
 
-      // Convert canvas pixel data to simple SVG rect grid
       const ctx = canvas.getContext('2d');
-      const w   = canvas.width, h = canvas.height;
+      const w = canvas.width, h = canvas.height;
       const imgData = ctx.getImageData(0, 0, w, h).data;
-      const cellW = w / Math.round(Math.sqrt(w));
       let rects = '';
 
       for (let y = 0; y < h; y++) {
         for (let x = 0; x < w; x++) {
           const idx = (y * w + x) * 4;
-          const r = imgData[idx], g = imgData[idx+1], b = imgData[idx+2];
-          // dark pixel → QR module
-          if (r < 128 && g < 128 && b < 128) {
-            rects += `<rect x="${x}" y="${y}" width="1" height="1" fill="${colorFg}"/>`;
+          if (imgData[idx] < 128 && imgData[idx+1] < 128 && imgData[idx+2] < 128) {
+            rects += '<rect x="' + x + '" y="' + y + '" width="1" height="1" fill="' + colorFg + '"/>';
           }
         }
       }
 
-      const svg = `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${w} ${h}">
-  <rect width="${w}" height="${h}" fill="${colorBg}"/>
-  ${rects}
-</svg>`;
+      const svg = '<?xml version="1.0" encoding="UTF-8"?>\n' +
+        '<svg xmlns="http://www.w3.org/2000/svg" width="' + size + '" height="' + size + '" viewBox="0 0 ' + w + ' ' + h + '">\n' +
+        '  <rect width="' + w + '" height="' + h + '" fill="' + colorBg + '"/>\n' +
+        '  ' + rects + '\n</svg>';
 
       const blob = new Blob([svg], { type: 'image/svg+xml' });
       const link = document.createElement('a');
       link.download = 'qrcode.svg';
       link.href = URL.createObjectURL(blob);
       link.click();
-      setTimeout(() => URL.revokeObjectURL(link.href), 5000);
+      setTimeout(function() { URL.revokeObjectURL(link.href); }, 5000);
     }
 
     async function uploadToCloud() {
@@ -415,7 +419,7 @@
         const res = await fetch('/api/upload', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ imageData, filename })
+          body: JSON.stringify({ imageData: imageData, filename: filename })
         });
         const data = await res.json();
         if (data.url) {
@@ -438,7 +442,7 @@
       document.execCommand('copy');
       const btn = document.getElementById('copyBtn');
       btn.textContent = '已複製！';
-      setTimeout(() => btn.textContent = '複製', 2000);
+      setTimeout(function() { btn.textContent = '複製'; }, 2000);
     }
   </script>
 </body>
