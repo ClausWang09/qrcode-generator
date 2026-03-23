@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>QR Code 產生器</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 24px;
+      padding: 40px;
+      width: 100%;
+      max-width: 520px;
+      box-shadow: 0 32px 64px rgba(0, 0, 0, 0.4);
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 36px;
+    }
+
+    .header h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: -0.5px;
+    }
+
+    .header p {
+      color: rgba(255, 255, 255, 0.5);
+      margin-top: 6px;
+      font-size: 0.95rem;
+    }
+
+    .icon {
+      font-size: 3rem;
+      margin-bottom: 12px;
+    }
+
+    .input-group {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    input[type="text"] {
+      flex: 1;
+      padding: 14px 18px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s, background 0.2s;
+    }
+
+    input[type="text"]::placeholder { color: rgba(255,255,255,0.35); }
+
+    input[type="text"]:focus {
+      border-color: rgba(100, 180, 255, 0.6);
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    button.generate-btn {
+      padding: 14px 22px;
+      border-radius: 12px;
+      border: none;
+      background: linear-gradient(135deg, #4facfe, #00f2fe);
+      color: #fff;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+      white-space: nowrap;
+    }
+
+    button.generate-btn:hover { opacity: 0.88; }
+    button.generate-btn:active { transform: scale(0.97); }
+
+    .options {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 28px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .option-label {
+      color: rgba(255,255,255,0.6);
+      font-size: 0.85rem;
+      white-space: nowrap;
+    }
+
+    .size-select, .color-input {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 8px;
+      color: #fff;
+      padding: 6px 10px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      outline: none;
+    }
+
+    .size-select option { background: #1a1a2e; }
+
+    .color-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    input[type="color"] {
+      width: 32px;
+      height: 32px;
+      border: 2px solid rgba(255,255,255,0.2);
+      border-radius: 8px;
+      cursor: pointer;
+      background: none;
+      padding: 2px;
+    }
+
+    .qr-area {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 24px;
+      animation: fadeIn 0.4s ease;
+    }
+
+    .qr-area.show { display: flex; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .qr-frame {
+      background: #fff;
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    }
+
+    #qrcode canvas, #qrcode img {
+      display: block;
+    }
+
+    .url-display {
+      color: rgba(255,255,255,0.6);
+      font-size: 0.82rem;
+      word-break: break-all;
+      text-align: center;
+      max-width: 100%;
+      background: rgba(255,255,255,0.05);
+      border-radius: 8px;
+      padding: 8px 14px;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 12px;
+    }
+
+    .dl-btn {
+      padding: 12px 28px;
+      border-radius: 12px;
+      border: none;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+
+    .dl-btn:active { transform: scale(0.97); }
+
+    .dl-png {
+      background: linear-gradient(135deg, #a18cd1, #fbc2eb);
+      color: #fff;
+    }
+
+    .dl-svg {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      color: #fff;
+    }
+
+    .dl-btn:hover { opacity: 0.85; }
+
+    .error-msg {
+      color: #ff6b6b;
+      font-size: 0.85rem;
+      text-align: center;
+      display: none;
+    }
+
+    .error-msg.show { display: block; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="header">
+      <div class="icon">⬛</div>
+      <h1>QR Code 產生器</h1>
+      <p>輸入任意連結，即時產生 QR Code</p>
+    </div>
+
+    <div class="input-group">
+      <input type="text" id="urlInput" placeholder="https://example.com" />
+      <button class="generate-btn" onclick="generate()">產生</button>
+    </div>
+
+    <p class="error-msg" id="errorMsg">請輸入有效的網址</p>
+
+    <div class="options">
+      <span class="option-label">尺寸</span>
+      <select class="size-select" id="sizeSelect">
+        <option value="128">128 px</option>
+        <option value="200" selected>200 px</option>
+        <option value="256">256 px</option>
+        <option value="320">320 px</option>
+        <option value="400">400 px</option>
+      </select>
+      <div class="color-wrap">
+        <span class="option-label">顏色</span>
+        <input type="color" id="colorFg" value="#000000" title="前景色" />
+        <input type="color" id="colorBg" value="#ffffff" title="背景色" />
+      </div>
+    </div>
+
+    <div class="qr-area" id="qrArea">
+      <div class="qr-frame">
+        <div id="qrcode"></div>
+      </div>
+      <div class="url-display" id="urlDisplay"></div>
+      <div class="btn-row">
+        <button class="dl-btn dl-png" onclick="downloadPNG()">⬇ 下載 PNG</button>
+        <button class="dl-btn dl-svg" onclick="downloadSVG()">⬇ 下載 SVG</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentUrl = '';
+
+    const urlInput = document.getElementById('urlInput');
+    urlInput.addEventListener('keydown', e => { if (e.key === 'Enter') generate(); });
+
+    function isValidUrl(str) {
+      try {
+        const u = new URL(str.startsWith('http') ? str : 'https://' + str);
+        return u.hostname.includes('.');
+      } catch { return false; }
+    }
+
+    function generate() {
+      const raw = urlInput.value.trim();
+      const errorEl = document.getElementById('errorMsg');
+
+      if (!raw) { showError('請輸入網址'); return; }
+      const url = raw.startsWith('http') ? raw : 'https://' + raw;
+      if (!isValidUrl(url)) { showError('請輸入有效的網址'); return; }
+
+      errorEl.classList.remove('show');
+      currentUrl = url;
+
+      const size    = parseInt(document.getElementById('sizeSelect').value);
+      const colorFg = document.getElementById('colorFg').value;
+      const colorBg = document.getElementById('colorBg').value;
+
+      const container = document.getElementById('qrcode');
+      container.innerHTML = '';
+
+      new QRCode(container, {
+        text: url,
+        width: size,
+        height: size,
+        colorDark: colorFg,
+        colorLight: colorBg,
+        correctLevel: QRCode.CorrectLevel.H
+      });
+
+      document.getElementById('urlDisplay').textContent = url;
+      document.getElementById('qrArea').classList.add('show');
+    }
+
+    function showError(msg) {
+      const el = document.getElementById('errorMsg');
+      el.textContent = msg;
+      el.classList.add('show');
+      document.getElementById('qrArea').classList.remove('show');
+    }
+
+    function getCanvas() {
+      return document.getElementById('qrcode').querySelector('canvas');
+    }
+
+    function downloadPNG() {
+      const canvas = getCanvas();
+      if (!canvas) return;
+      const link = document.createElement('a');
+      link.download = 'qrcode.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }
+
+    function downloadSVG() {
+      const size    = parseInt(document.getElementById('sizeSelect').value);
+      const colorFg = document.getElementById('colorFg').value;
+      const colorBg = document.getElementById('colorBg').value;
+      const canvas  = getCanvas();
+      if (!canvas) return;
+
+      // Convert canvas pixel data to simple SVG rect grid
+      const ctx = canvas.getContext('2d');
+      const w   = canvas.width, h = canvas.height;
+      const imgData = ctx.getImageData(0, 0, w, h).data;
+      const cellW = w / Math.round(Math.sqrt(w));
+      let rects = '';
+
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          const idx = (y * w + x) * 4;
+          const r = imgData[idx], g = imgData[idx+1], b = imgData[idx+2];
+          // dark pixel → QR module
+          if (r < 128 && g < 128 && b < 128) {
+            rects += `<rect x="${x}" y="${y}" width="1" height="1" fill="${colorFg}"/>`;
+          }
+        }
+      }
+
+      const svg = `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${w} ${h}">
+  <rect width="${w}" height="${h}" fill="${colorBg}"/>
+  ${rects}
+</svg>`;
+
+      const blob = new Blob([svg], { type: 'image/svg+xml' });
+      const link = document.createElement('a');
+      link.download = 'qrcode.svg';
+      link.href = URL.createObjectURL(blob);
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(link.href), 5000);
+    }
+  </script>
+</body>
+</html>
