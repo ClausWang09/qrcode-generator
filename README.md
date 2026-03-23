@@ -14,5 +14,5 @@
 直接開啟 `index.html`，或透過 GitHub Pages 線上使用。
 
 ## Demo
-
+還無法執行
 [GitHub Pages](https://clauswang09.github.io/qrcode-generator/)
