@@ -211,6 +211,37 @@
     }
 
     .error-msg.show { display: block; }
+
+    .url-box {
+      display: none;
+      flex-direction: column;
+      gap: 8px;
+      width: 100%;
+      align-items: center;
+    }
+    .url-copy-row {
+      display: flex;
+      gap: 8px;
+      width: 100%;
+    }
+    .url-copy-row input {
+      flex: 1;
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.2);
+      background: rgba(255,255,255,0.08);
+      color: #fff;
+      font-size: 0.82rem;
+      cursor: text;
+    }
+    .url-label {
+      color: rgba(255,255,255,0.5);
+      font-size: 0.82rem;
+    }
+    .btn-cloud {
+      background: linear-gradient(135deg, #43e97b, #38f9d7);
+      color: #1a1a2e;
+    }
   </style>
 </head>
 <body>
@@ -252,6 +283,14 @@
       <div class="btn-row">
         <button class="dl-btn dl-png" onclick="downloadPNG()">⬇ 下載 PNG</button>
         <button class="dl-btn dl-svg" onclick="downloadSVG()">⬇ 下載 SVG</button>
+      </div>
+      <button class="dl-btn btn-cloud" id="uploadBtn" onclick="uploadToCloud()">☁ 取得雲端連結</button>
+      <div class="url-box" id="urlBox">
+        <div class="url-label">圖片雲端連結（可直接分享）：</div>
+        <div class="url-copy-row">
+          <input id="urlText" type="text" readonly />
+          <button id="copyBtn" class="dl-btn dl-png" onclick="copyUrl()" style="padding:10px 16px;font-size:0.82rem;">複製</button>
+        </div>
       </div>
     </div>
   </div>
@@ -298,6 +337,10 @@
 
       document.getElementById('urlDisplay').textContent = url;
       document.getElementById('qrArea').classList.add('show');
+      const uploadBtn = document.getElementById('uploadBtn');
+      if (uploadBtn) { uploadBtn.textContent = '☁ 取得雲端連結'; uploadBtn.disabled = false; }
+      const urlBox = document.getElementById('urlBox');
+      if (urlBox) urlBox.style.display = 'none';
     }
 
     function showError(msg) {
@@ -357,6 +400,45 @@
       link.href = URL.createObjectURL(blob);
       link.click();
       setTimeout(() => URL.revokeObjectURL(link.href), 5000);
+    }
+
+    async function uploadToCloud() {
+      const canvas = getCanvas();
+      if (!canvas) return;
+      const btn = document.getElementById('uploadBtn');
+      const urlBox = document.getElementById('urlBox');
+      btn.textContent = '上傳中…';
+      btn.disabled = true;
+      try {
+        const imageData = canvas.toDataURL('image/png');
+        const filename = 'qrcode-' + Date.now() + '.png';
+        const res = await fetch('/api/upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imageData, filename })
+        });
+        const data = await res.json();
+        if (data.url) {
+          document.getElementById('urlText').value = data.url;
+          urlBox.style.display = 'flex';
+          btn.textContent = '✓ 已上傳';
+        } else {
+          throw new Error(data.error || '上傳失敗');
+        }
+      } catch(e) {
+        alert('上傳失敗：' + e.message);
+        btn.textContent = '☁ 取得雲端連結';
+        btn.disabled = false;
+      }
+    }
+
+    function copyUrl() {
+      const input = document.getElementById('urlText');
+      input.select();
+      document.execCommand('copy');
+      const btn = document.getElementById('copyBtn');
+      btn.textContent = '已複製！';
+      setTimeout(() => btn.textContent = '複製', 2000);
     }
   </script>
 </body>
